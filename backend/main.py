@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import categorizer, consistency, database, embeddings, graph_builder
-from backend.config import CATEGORIES, FRAMEWORKS, get_categories
+from backend.config import CATEGORIES, FRAMEWORKS, QUESTION_BANK, get_categories
 from backend.models import (
     CheckRequest,
     CheckResponse,
@@ -47,6 +47,13 @@ def list_frameworks() -> dict:
         ],
         "default": "agency",
     }
+
+
+@app.get("/api/prompts")
+def get_prompts(framework_id: str = "agency") -> dict:
+    """Return the pre-built question bank for a given framework."""
+    prompts = QUESTION_BANK.get(framework_id, QUESTION_BANK.get("agency", []))
+    return {"framework_id": framework_id, "prompts": prompts}
 
 
 @app.post("/api/questions")

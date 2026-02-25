@@ -20,6 +20,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export async function getPrompts(frameworkId: string): Promise<string[]> {
+  const data = await request<{ framework_id: string; prompts: string[] }>(
+    `/api/prompts?framework_id=${frameworkId}`
+  );
+  return data.prompts;
+}
+
 export async function addQuestion(
   text: string,
   answer: string,

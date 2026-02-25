@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import ConsistencyGraph from "@/components/graph/ConsistencyGraph";
-import FrameworkSelector from "@/components/FrameworkSelector";
-import AddQuestionPanel from "@/components/panels/AddQuestionPanel";
 import AlertsPanel from "@/components/panels/AlertsPanel";
 import DetailsSidebar from "@/components/panels/DetailsSidebar";
+import FrameworkSelectPage from "@/components/FrameworkSelectPage";
+import QuizMode from "@/components/quiz/QuizMode";
 import { useGraphData } from "@/hooks/useGraphData";
 import type { ConsistencyResult, GraphNodeData } from "@/lib/types";
+
+type Mode = "select" | "quiz" | "graph";
+
+interface Framework {
+  id: string;
+  name: string;
+  icon: string;
+}
 
 interface SelectedNode {
   id: string;
@@ -18,11 +26,36 @@ interface SelectedNode {
 
 function AppContent() {
   const { refresh } = useGraphData();
-  const [frameworkId, setFrameworkId] = useState("agency");
+  const [mode, setMode] = useState<Mode>("select");
+  const [framework, setFramework] = useState<Framework>({ id: "agency", name: "Agency & Personal Power", icon: "🧠" });
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
-  const [consistencyResults, setConsistencyResults] = useState<
-    ConsistencyResult[]
-  >([]);
+  const [consistencyResults, setConsistencyResults] = useState<ConsistencyResult[]>([]);
+  const [allFrameworks, setAllFrameworks] = useState<Framework[]>([]);
+
+  // Load framework metadata so we have icon + name when quiz starts
+  useEffect(() => {
+    fetch("http://localhost:8000/api/frameworks")
+      .then((r) => r.json())
+      .then((data) => setAllFrameworks(data.frameworks))
+      .catch(() => {});
+  }, []);
+
+  const handleSelectFramework = useCallback(
+    (id: string) => {
+      const fw = allFrameworks.find((f) => f.id === id);
+      if (fw) setFramework(fw);
+      setMode("quiz");
+    },
+    [allFrameworks]
+  );
+
+  const handleSave = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleConsistencyResults = useCallback((results: ConsistencyResult[]) => {
+    setConsistencyResults((prev) => [...results, ...prev]);
+  }, []);
 
   const handleNodeClick = useCallback(
     (nodeId: string, nodeData: GraphNodeData, nodeType: string) => {
@@ -31,53 +64,75 @@ function AppContent() {
     []
   );
 
-  const handleSave = useCallback(() => {
-    refresh();
-  }, [refresh]);
-
   const handleDelete = useCallback(() => {
     refresh();
     setSelectedNode(null);
   }, [refresh]);
 
-  const handleConsistencyResults = useCallback(
-    (results: ConsistencyResult[]) => {
-      setConsistencyResults((prev) => [...results, ...prev]);
-    },
-    []
-  );
+  // === SELECT screen ===
+  if (mode === "select") {
+    return <FrameworkSelectPage onSelect={handleSelectFramework} />;
+  }
 
+  // === QUIZ screen ===
+  if (mode === "quiz") {
+    return (
+      <QuizMode
+        frameworkId={framework.id}
+        frameworkName={framework.name}
+        frameworkIcon={framework.icon}
+        onSave={handleSave}
+        onConsistencyResults={handleConsistencyResults}
+        onComplete={() => setMode("graph")}
+        onChangeFramework={() => setMode("select")}
+      />
+    );
+  }
+
+  // === GRAPH screen ===
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-slate-950">
       {/* Header */}
-      <header className="flex items-center px-4 py-2 border-b border-gray-200 bg-white shrink-0">
-        <h1 className="text-lg font-bold text-gray-800">Mirror</h1>
-        <span className="ml-2 text-xs text-gray-400">
-          Universal self-reflection engine
-        </span>
+      <header className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900 shrink-0">
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-white">Mirror</h1>
+          <span className="text-xs text-slate-500">
+            {framework.icon} {framework.name}
+          </span>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setMode("quiz")}
+            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            + More questions
+          </button>
+          <button
+            onClick={() => setMode("select")}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            Change framework
+          </button>
+        </div>
       </header>
 
-      {/* Main content */}
+      {/* Main */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar */}
-        <aside className="w-80 border-r border-gray-200 bg-white flex flex-col shrink-0">
-          <FrameworkSelector selected={frameworkId} onChange={setFrameworkId} />
-          <AddQuestionPanel
-            frameworkId={frameworkId}
-            onSave={handleSave}
-            onConsistencyResults={handleConsistencyResults}
-          />
-          <AlertsPanel results={consistencyResults} />
-        </aside>
+        {/* Left: alerts */}
+        {consistencyResults.length > 0 && (
+          <aside className="w-72 border-r border-slate-800 bg-slate-900 flex flex-col shrink-0 overflow-y-auto">
+            <AlertsPanel results={consistencyResults} />
+          </aside>
+        )}
 
         {/* Center: graph */}
-        <main className="flex-1 bg-gray-50">
+        <main className="flex-1 bg-slate-950">
           <ConsistencyGraph onNodeClick={handleNodeClick} />
         </main>
 
-        {/* Right sidebar (conditional) */}
+        {/* Right: node details */}
         <aside
-          className={`border-l border-gray-200 bg-white shrink-0 overflow-y-auto transition-all duration-200 ${
+          className={`border-l border-slate-800 bg-slate-900 shrink-0 overflow-y-auto transition-all duration-200 ${
             selectedNode ? "w-80" : "w-0"
           }`}
         >
