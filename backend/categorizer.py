@@ -120,15 +120,37 @@ def _compute_centroids() -> dict[str, np.ndarray]:
     return _centroids
 
 
-def categorize(text: str) -> str:
-    centroids = _compute_centroids()
+def categorize(text: str, allowed_categories: list[str] | None = None) -> str:
+    """
+    Categorize text into the best matching principle.
+
+    If allowed_categories is provided, only match against those principles.
+    For principles not in PROTOTYPES (e.g. from non-Amazon frameworks), we
+    use the principle name itself as a semantic prototype.
+    """
     model = get_model()
     embedding = model.encode(text)
 
-    best_category = "Customer Obsession"
+    # Determine which categories to compare against
+    if allowed_categories:
+        targets = allowed_categories
+    else:
+        centroids = _compute_centroids()
+        targets = list(centroids.keys())
+
+    best_category = targets[0]
     best_similarity = -1.0
 
-    for category, centroid in centroids.items():
+    # Pre-compute centroids for known categories
+    centroids = _compute_centroids()
+
+    for category in targets:
+        if category in centroids:
+            centroid = centroids[category]
+        else:
+            # Dynamic prototype: encode the principle name itself
+            centroid = model.encode(category)
+
         similarity = float(
             np.dot(embedding, centroid)
             / (np.linalg.norm(embedding) * np.linalg.norm(centroid))

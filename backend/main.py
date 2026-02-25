@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import categorizer, consistency, database, embeddings, graph_builder
-from backend.config import CATEGORIES
+from backend.config import CATEGORIES, FRAMEWORKS, get_categories
 from backend.models import (
     CheckRequest,
     CheckResponse,
@@ -30,10 +30,30 @@ def startup():
     database.init_db()
 
 
+@app.get("/api/frameworks")
+def list_frameworks() -> dict:
+    """Return all available self-reflection frameworks."""
+    return {
+        "frameworks": [
+            {
+                "id": fw_id,
+                "name": fw["name"],
+                "description": fw["description"],
+                "icon": fw["icon"],
+                "principle_count": len(fw["principles"]),
+                "principles": fw["principles"],
+            }
+            for fw_id, fw in FRAMEWORKS.items()
+        ],
+        "default": "agency",
+    }
+
+
 @app.post("/api/questions")
 def create_question(body: QuestionCreate) -> dict:
     question_id = str(uuid4())
-    category = categorizer.categorize(body.text)
+    categories = get_categories(body.framework_id)
+    category = categorizer.categorize(body.text, list(categories.keys()))
 
     question = database.add_question(question_id, body.text, body.answer, category)
     embeddings.add_embedding(question_id, body.text, category)

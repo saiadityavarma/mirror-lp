@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class QuestionCreate(BaseModel):
     text: str
     answer: str
+    framework_id: str = "agency"
 
 
 class QuestionResponse(BaseModel):
