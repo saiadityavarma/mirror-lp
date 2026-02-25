@@ -71,7 +71,12 @@ function AppContent() {
 
   // === SELECT screen ===
   if (mode === "select") {
-    return <FrameworkSelectPage onSelect={handleSelectFramework} />;
+    return (
+      <FrameworkSelectPage
+        onSelect={handleSelectFramework}
+        onViewGraph={() => setMode("graph")}
+      />
+    );
   }
 
   // === QUIZ screen ===

@@ -36,13 +36,42 @@ export default function QuizMode({
   const [flash, setFlash] = useState<"consistent" | "inconsistent" | null>(null);
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
+  const [totalAnswered, setTotalAnswered] = useState(0);
+
+  const storageKey = `mirror_answered_${frameworkId}`;
+
+  const getAnsweredSet = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
+  const markAnswered = (text: string) => {
+    const set = getAnsweredSet();
+    set.add(text);
+    localStorage.setItem(storageKey, JSON.stringify([...set]));
+    setTotalAnswered(set.size);
+  };
 
   useEffect(() => {
-    setPrompts([]);
     setIndex(0);
     setAnswered(0);
     setDone(false);
-    getPrompts(frameworkId).then(setPrompts).catch(() => {});
+    getPrompts(frameworkId).then((all) => {
+      const answered = getAnsweredSet();
+      setTotalAnswered(answered.size);
+      // Filter out already-answered questions
+      const remaining = all.filter((q) => !answered.has(q));
+      if (remaining.length === 0) {
+        setDone(true);
+      } else {
+        setPrompts(remaining);
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frameworkId]);
 
   const advance = useCallback(() => {
@@ -64,6 +93,7 @@ export default function QuizMode({
         setFlash(hasInconsistency ? "inconsistent" : "consistent");
         onConsistencyResults(result.consistency);
         onSave();
+        markAnswered(prompts[index]);
         setAnswered((n) => n + 1);
         setTimeout(() => {
           setFlash(null);
@@ -94,7 +124,9 @@ export default function QuizMode({
     return () => window.removeEventListener("keydown", onKey);
   }, [handleAnswer, saving, done]);
 
-  const progress = prompts.length > 0 ? ((index) / prompts.length) * 100 : 0;
+  const sessionAnswered = totalAnswered + index;
+  const totalQuestions = totalAnswered + prompts.length;
+  const progress = totalQuestions > 0 ? (sessionAnswered / totalQuestions) * 100 : 0;
   const currentPrompt = prompts[index];
 
   // Completion screen
@@ -103,10 +135,12 @@ export default function QuizMode({
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 text-center overflow-y-auto">
         <div className="text-5xl mb-6">✨</div>
         <h2 className="text-3xl font-bold text-white mb-3">
-          {answered} reflection{answered !== 1 ? "s" : ""} recorded
+          {totalAnswered + answered} reflection{totalAnswered + answered !== 1 ? "s" : ""} recorded
         </h2>
         <p className="text-slate-400 text-lg mb-10 max-w-md">
-          Your contradiction graph is ready. See where your beliefs align — and where they don&apos;t.
+          {answered > 0
+            ? `${answered} new answer${answered !== 1 ? "s" : ""} added. Your graph is ready.`
+            : "You've already answered all the questions. Your graph is waiting."}
         </p>
         <div className="flex gap-4">
           <button
@@ -170,7 +204,12 @@ export default function QuizMode({
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         {/* Counter */}
         <div className="text-slate-500 text-sm mb-8 tracking-wide">
-          {index + 1} / {prompts.length}
+          {sessionAnswered + 1} / {totalQuestions}
+          {totalAnswered > 0 && (
+            <span className="ml-2 text-slate-700">
+              ({totalAnswered} from last session)
+            </span>
+          )}
         </div>
 
         {/* Question text */}
