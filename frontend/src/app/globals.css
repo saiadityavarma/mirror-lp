@@ -9,6 +9,10 @@
 html,
 body {
   height: 100%;
+}
+
+/* Graph view needs overflow hidden to prevent ReactFlow scroll bleed */
+.graph-root {
   overflow: hidden;
 }
 

@@ -100,7 +100,7 @@ export default function QuizMode({
   // Completion screen
   if (done) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 text-center overflow-y-auto">
         <div className="text-5xl mb-6">✨</div>
         <h2 className="text-3xl font-bold text-white mb-3">
           {answered} reflection{answered !== 1 ? "s" : ""} recorded
@@ -137,9 +137,10 @@ export default function QuizMode({
 
   return (
     <div
-      className={`min-h-screen bg-slate-950 flex flex-col transition-colors duration-300 ${
+      className={`min-h-screen bg-slate-950 flex flex-col overflow-y-auto transition-colors duration-300 ${
         flash === "inconsistent" ? "bg-red-950/30" : flash === "consistent" ? "bg-green-950/20" : ""
       }`}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }}
     >
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4">

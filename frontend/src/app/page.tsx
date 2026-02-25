@@ -91,7 +91,7 @@ function AppContent() {
 
   // === GRAPH screen ===
   return (
-    <div className="flex flex-col h-screen bg-slate-950">
+    <div className="graph-root flex flex-col h-screen bg-slate-950">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900 shrink-0">
         <div className="flex items-center gap-2">

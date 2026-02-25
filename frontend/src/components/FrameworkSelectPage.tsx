@@ -26,7 +26,7 @@ export default function FrameworkSelectPage({ onSelect }: Props) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 py-12 overflow-y-auto" style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }}>
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-white tracking-tight mb-3">
