@@ -22,11 +22,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function addQuestion(
   text: string,
-  answer: string
+  answer: string,
+  frameworkId?: string
 ): Promise<AddQuestionResponse> {
   return request<AddQuestionResponse>("/api/questions", {
     method: "POST",
-    body: JSON.stringify({ text, answer }),
+    body: JSON.stringify({ text, answer, framework_id: frameworkId }),
   });
 }
 

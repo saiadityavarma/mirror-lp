@@ -5,11 +5,13 @@ import { addQuestion } from "@/lib/api";
 import { LIKERT_OPTIONS, type ConsistencyResult } from "@/lib/types";
 
 interface AddQuestionPanelProps {
+  frameworkId: string;
   onSave: () => void;
   onConsistencyResults: (results: ConsistencyResult[]) => void;
 }
 
 export default function AddQuestionPanel({
+  frameworkId,
   onSave,
   onConsistencyResults,
 }: AddQuestionPanelProps) {
@@ -22,7 +24,7 @@ export default function AddQuestionPanel({
     if (!text.trim()) return;
     setSaving(true);
     try {
-      const result = await addQuestion(text.trim(), answer);
+      const result = await addQuestion(text.trim(), answer, frameworkId);
       onConsistencyResults(result.consistency);
 
       const hasInconsistency = result.consistency.some(

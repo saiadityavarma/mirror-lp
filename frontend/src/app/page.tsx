@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import ConsistencyGraph from "@/components/graph/ConsistencyGraph";
+import FrameworkSelector from "@/components/FrameworkSelector";
 import AddQuestionPanel from "@/components/panels/AddQuestionPanel";
 import AlertsPanel from "@/components/panels/AlertsPanel";
 import DetailsSidebar from "@/components/panels/DetailsSidebar";
@@ -17,6 +18,7 @@ interface SelectedNode {
 
 function AppContent() {
   const { refresh } = useGraphData();
+  const [frameworkId, setFrameworkId] = useState("agency");
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
   const [consistencyResults, setConsistencyResults] = useState<
     ConsistencyResult[]
@@ -59,7 +61,9 @@ function AppContent() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar */}
         <aside className="w-80 border-r border-gray-200 bg-white flex flex-col shrink-0">
+          <FrameworkSelector selected={frameworkId} onChange={setFrameworkId} />
           <AddQuestionPanel
+            frameworkId={frameworkId}
             onSave={handleSave}
             onConsistencyResults={handleConsistencyResults}
           />
