@@ -34,7 +34,7 @@ function AppContent() {
 
   // Load framework metadata so we have icon + name when quiz starts
   useEffect(() => {
-    fetch("http://localhost:8000/api/frameworks")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/frameworks`)
       .then((r) => r.json())
       .then((data) => setAllFrameworks(data.frameworks))
       .catch(() => {});

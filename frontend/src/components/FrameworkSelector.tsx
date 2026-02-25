@@ -18,7 +18,7 @@ export default function FrameworkSelector({ selected, onChange }: Props) {
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/frameworks")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/frameworks`)
       .then((r) => r.json())
       .then((data) => setFrameworks(data.frameworks))
       .catch(() => {});
