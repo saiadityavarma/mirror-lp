@@ -5,9 +5,9 @@ from backend.database import get_edges, get_questions
 from backend.models import GraphData, GraphEdge, GraphNode
 
 
-def build_graph() -> GraphData:
-    questions = get_questions()
-    edges = get_edges()
+def build_graph(session_id: str = "default") -> GraphData:
+    questions = get_questions(session_id)
+    edges = get_edges(session_id)
 
     nodes: list[GraphNode] = []
     graph_edges: list[GraphEdge] = []

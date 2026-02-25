@@ -37,6 +37,12 @@ export default function QuizMode({
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [totalAnswered, setTotalAnswered] = useState(0);
+  const [contradiction, setContradiction] = useState<{
+    myText: string; myAnswer: string;
+    otherText: string; otherAnswer: string;
+    explanation: string;
+  } | null>(null);
+  const [contradictionCount, setContradictionCount] = useState(0);
 
   const storageKey = `mirror_answered_${frameworkId}`;
 
@@ -89,16 +95,28 @@ export default function QuizMode({
       setSaving(true);
       try {
         const result = await addQuestion(prompts[index], answer, frameworkId);
-        const hasInconsistency = result.consistency.some((r) => !r.is_consistent);
-        setFlash(hasInconsistency ? "inconsistent" : "consistent");
+        const inconsistencies = result.consistency.filter((r) => !r.is_consistent);
+        const hasInconsistency = inconsistencies.length > 0;
         onConsistencyResults(result.consistency);
         onSave();
         markAnswered(prompts[index]);
         setAnswered((n) => n + 1);
-        setTimeout(() => {
-          setFlash(null);
-          advance();
-        }, 600);
+
+        if (hasInconsistency) {
+          const c = inconsistencies[0];
+          setContradictionCount((n) => n + 1);
+          setFlash("inconsistent");
+          setContradiction({
+            myText: prompts[index],
+            myAnswer: answer,
+            otherText: c.target_text || "",
+            otherAnswer: c.target_answer || "",
+            explanation: c.explanation,
+          });
+        } else {
+          setFlash("consistent");
+          setTimeout(() => { setFlash(null); advance(); }, 600);
+        }
       } catch {
         advance();
       } finally {
@@ -160,6 +178,65 @@ export default function QuizMode({
     );
   }
 
+  // Contradiction reveal
+  if (contradiction) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 py-12 overflow-y-auto">
+        <div className="w-full max-w-xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-8">
+            <span className="text-3xl">⚡</span>
+            <div>
+              <div className="text-red-400 font-bold text-lg">Contradiction #{contradictionCount} found</div>
+              <div className="text-slate-500 text-sm">These two beliefs don&apos;t add up</div>
+            </div>
+          </div>
+
+          {/* The two statements */}
+          <div className="space-y-3 mb-6">
+            <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">You just said</div>
+              <div className="text-white text-sm leading-relaxed">{contradiction.myText}</div>
+              <div className="mt-2 inline-block text-xs bg-red-900/50 text-red-300 rounded-full px-2.5 py-1">
+                {contradiction.myAnswer}
+              </div>
+            </div>
+            <div className="text-center text-slate-600 text-sm">conflicts with</div>
+            <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">You previously said</div>
+              <div className="text-white text-sm leading-relaxed">{contradiction.otherText}</div>
+              <div className="mt-2 inline-block text-xs bg-red-900/50 text-red-300 rounded-full px-2.5 py-1">
+                {contradiction.otherAnswer}
+              </div>
+            </div>
+          </div>
+
+          {/* Explanation */}
+          <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-4 mb-8">
+            <div className="text-xs text-red-400 uppercase tracking-wide mb-2">Why they conflict</div>
+            <div className="text-slate-300 text-sm leading-relaxed">{contradiction.explanation}</div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setContradiction(null); setFlash(null); advance(); }}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+            >
+              Got it — next question →
+            </button>
+            <button
+              onClick={onComplete}
+              className="border border-slate-600 hover:border-slate-400 text-slate-400 py-3 px-4 rounded-xl transition-colors text-sm"
+            >
+              See graph
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading
   if (prompts.length === 0) {
     return (
@@ -184,12 +261,19 @@ export default function QuizMode({
         >
           ← {frameworkIcon} {frameworkName}
         </button>
-        <button
-          onClick={onComplete}
-          className="text-slate-500 hover:text-slate-300 text-sm transition-colors"
-        >
-          Skip to graph →
-        </button>
+        <div className="flex items-center gap-4">
+          {contradictionCount > 0 && (
+            <span className="text-red-400 text-sm font-medium animate-pulse">
+              ⚡ {contradictionCount} contradiction{contradictionCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          <button
+            onClick={onComplete}
+            className="text-slate-500 hover:text-slate-300 text-sm transition-colors"
+          >
+            Skip to graph →
+          </button>
+        </div>
       </div>
 
       {/* Progress bar */}

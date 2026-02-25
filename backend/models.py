@@ -5,6 +5,7 @@ class QuestionCreate(BaseModel):
     text: str
     answer: str
     framework_id: str = "agency"
+    session_id: str = "default"
 
 
 class QuestionResponse(BaseModel):
@@ -13,6 +14,7 @@ class QuestionResponse(BaseModel):
     answer: str
     category: str
     created_at: str
+    session_id: str = "default"
 
 
 class ConsistencyResult(BaseModel):
@@ -21,6 +23,8 @@ class ConsistencyResult(BaseModel):
     is_consistent: bool
     explanation: str
     color: str
+    target_text: str = ""
+    target_answer: str = ""
 
 
 class GraphNode(BaseModel):
@@ -62,7 +66,8 @@ CREATE TABLE IF NOT EXISTS questions (
     text TEXT NOT NULL,
     answer TEXT NOT NULL,
     category TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    session_id TEXT NOT NULL DEFAULT 'default'
 );
 """
 
@@ -73,6 +78,7 @@ CREATE TABLE IF NOT EXISTS consistency_edges (
     target_id TEXT NOT NULL,
     is_consistent BOOLEAN NOT NULL,
     explanation TEXT NOT NULL,
+    session_id TEXT NOT NULL DEFAULT 'default',
     FOREIGN KEY (source_id) REFERENCES questions(id),
     FOREIGN KEY (target_id) REFERENCES questions(id)
 );

@@ -12,6 +12,8 @@ export interface ConsistencyResult {
   is_consistent: boolean;
   explanation: string;
   color: string;
+  target_text?: string;
+  target_answer?: string;
 }
 
 export interface AddQuestionResponse {

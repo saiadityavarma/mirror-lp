@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import categorizer, consistency, database, embeddings, graph_builder
@@ -57,16 +57,20 @@ def get_prompts(framework_id: str = "agency") -> dict:
 
 
 @app.post("/api/questions")
-def create_question(body: QuestionCreate) -> dict:
+def create_question(
+    body: QuestionCreate,
+    x_session_id: str = Header(default="default"),
+) -> dict:
+    session_id = body.session_id if body.session_id != "default" else x_session_id
     question_id = str(uuid4())
     categories = get_categories(body.framework_id)
     category = categorizer.categorize(body.text, list(categories.keys()))
 
-    question = database.add_question(question_id, body.text, body.answer, category)
+    question = database.add_question(question_id, body.text, body.answer, category, session_id)
     embeddings.add_embedding(question_id, body.text, category)
 
-    # Find similar questions and check consistency
-    similar = embeddings.search_similar(body.text, n=5)
+    # Find similar questions and check consistency within same session
+    similar = embeddings.search_similar(body.text, n=10)
     consistency_results: list[ConsistencyResult] = []
 
     for sim_id, sim_text, sim_category, sim_distance in similar:
@@ -78,6 +82,9 @@ def create_question(body: QuestionCreate) -> dict:
         existing = database.get_question(sim_id)
         if existing is None:
             continue
+        # Only compare within same session
+        if existing.session_id != session_id:
+            continue
 
         result = consistency.check_consistency(
             body.text, body.answer, existing.text, existing.answer
@@ -87,7 +94,7 @@ def create_question(body: QuestionCreate) -> dict:
         is_consistent = result["is_consistent"]
         explanation = result["explanation"]
 
-        database.add_edge(edge_id, question_id, sim_id, is_consistent, explanation)
+        database.add_edge(edge_id, question_id, sim_id, is_consistent, explanation, session_id)
 
         color = "#22c55e" if is_consistent else "#ef4444"
         consistency_results.append(
@@ -97,6 +104,8 @@ def create_question(body: QuestionCreate) -> dict:
                 is_consistent=is_consistent,
                 explanation=explanation,
                 color=color,
+                target_text=existing.text,
+                target_answer=existing.answer,
             )
         )
 
@@ -104,8 +113,8 @@ def create_question(body: QuestionCreate) -> dict:
 
 
 @app.get("/api/questions")
-def list_questions() -> list[QuestionResponse]:
-    return database.get_questions()
+def list_questions(x_session_id: str = Header(default="default")) -> list[QuestionResponse]:
+    return database.get_questions(x_session_id)
 
 
 @app.delete("/api/questions/{question_id}")
@@ -118,8 +127,8 @@ def delete_question(question_id: str) -> dict:
 
 
 @app.get("/api/graph")
-def get_graph() -> GraphData:
-    return graph_builder.build_graph()
+def get_graph(x_session_id: str = Header(default="default")) -> GraphData:
+    return graph_builder.build_graph(session_id=x_session_id)
 
 
 @app.post("/api/check")

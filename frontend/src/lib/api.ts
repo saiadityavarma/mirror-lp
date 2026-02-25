@@ -5,12 +5,17 @@ import type {
   GraphData,
   Question,
 } from "./types";
+import { getSessionId } from "./session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const sessionId = getSessionId();
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Session-ID": sessionId,
+    },
     ...options,
   });
   if (!res.ok) {

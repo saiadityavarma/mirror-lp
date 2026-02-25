@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime
-from uuid import uuid4
 
 from backend.config import DATABASE_PATH
 from backend.models import (
@@ -24,42 +23,54 @@ def init_db() -> None:
     try:
         conn.execute(CREATE_QUESTIONS_TABLE)
         conn.execute(CREATE_EDGES_TABLE)
+        # Ensure session_id columns exist on old DBs
+        for col_sql in [
+            "ALTER TABLE questions ADD COLUMN session_id TEXT NOT NULL DEFAULT 'default'",
+            "ALTER TABLE consistency_edges ADD COLUMN session_id TEXT NOT NULL DEFAULT 'default'",
+        ]:
+            try:
+                conn.execute(col_sql)
+            except Exception:
+                pass  # Column already exists
         conn.commit()
     finally:
         conn.close()
 
 
-def add_question(id: str, text: str, answer: str, category: str) -> QuestionResponse:
+def add_question(
+    id: str, text: str, answer: str, category: str, session_id: str = "default"
+) -> QuestionResponse:
     created_at = datetime.utcnow().isoformat()
     conn = _get_conn()
     try:
         conn.execute(
-            "INSERT INTO questions (id, text, answer, category, created_at) VALUES (?, ?, ?, ?, ?)",
-            (id, text, answer, category, created_at),
+            "INSERT INTO questions (id, text, answer, category, created_at, session_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (id, text, answer, category, created_at, session_id),
         )
         conn.commit()
     finally:
         conn.close()
     return QuestionResponse(
-        id=id, text=text, answer=answer, category=category, created_at=created_at
+        id=id, text=text, answer=answer, category=category,
+        created_at=created_at, session_id=session_id,
     )
 
 
-def get_questions() -> list[QuestionResponse]:
+def get_questions(session_id: str = "default") -> list[QuestionResponse]:
     conn = _get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, text, answer, category, created_at FROM questions ORDER BY created_at"
+            "SELECT id, text, answer, category, created_at, session_id FROM questions "
+            "WHERE session_id = ? ORDER BY created_at",
+            (session_id,),
         ).fetchall()
     finally:
         conn.close()
     return [
         QuestionResponse(
-            id=row["id"],
-            text=row["text"],
-            answer=row["answer"],
-            category=row["category"],
-            created_at=row["created_at"],
+            id=row["id"], text=row["text"], answer=row["answer"],
+            category=row["category"], created_at=row["created_at"],
+            session_id=row["session_id"],
         )
         for row in rows
     ]
@@ -69,7 +80,7 @@ def get_question(id: str) -> QuestionResponse | None:
     conn = _get_conn()
     try:
         row = conn.execute(
-            "SELECT id, text, answer, category, created_at FROM questions WHERE id = ?",
+            "SELECT id, text, answer, category, created_at, session_id FROM questions WHERE id = ?",
             (id,),
         ).fetchone()
     finally:
@@ -77,11 +88,9 @@ def get_question(id: str) -> QuestionResponse | None:
     if row is None:
         return None
     return QuestionResponse(
-        id=row["id"],
-        text=row["text"],
-        answer=row["answer"],
-        category=row["category"],
-        created_at=row["created_at"],
+        id=row["id"], text=row["text"], answer=row["answer"],
+        category=row["category"], created_at=row["created_at"],
+        session_id=row["session_id"],
     )
 
 
@@ -98,24 +107,28 @@ def delete_question(id: str) -> bool:
 
 
 def add_edge(
-    id: str, source_id: str, target_id: str, is_consistent: bool, explanation: str
+    id: str, source_id: str, target_id: str,
+    is_consistent: bool, explanation: str, session_id: str = "default"
 ) -> None:
     conn = _get_conn()
     try:
         conn.execute(
-            "INSERT INTO consistency_edges (id, source_id, target_id, is_consistent, explanation) VALUES (?, ?, ?, ?, ?)",
-            (id, source_id, target_id, is_consistent, explanation),
+            "INSERT INTO consistency_edges (id, source_id, target_id, is_consistent, explanation, session_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (id, source_id, target_id, is_consistent, explanation, session_id),
         )
         conn.commit()
     finally:
         conn.close()
 
 
-def get_edges() -> list[dict]:
+def get_edges(session_id: str = "default") -> list[dict]:
     conn = _get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, source_id, target_id, is_consistent, explanation FROM consistency_edges"
+            "SELECT id, source_id, target_id, is_consistent, explanation FROM consistency_edges "
+            "WHERE session_id = ?",
+            (session_id,),
         ).fetchall()
     finally:
         conn.close()
@@ -131,7 +144,9 @@ def get_edges() -> list[dict]:
     ]
 
 
-def delete_edges_for_question(question_id: str, conn: sqlite3.Connection | None = None) -> None:
+def delete_edges_for_question(
+    question_id: str, conn: sqlite3.Connection | None = None
+) -> None:
     should_close = conn is None
     if conn is None:
         conn = _get_conn()
