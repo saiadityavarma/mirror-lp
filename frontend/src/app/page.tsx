@@ -51,9 +51,9 @@ function AppContent() {
     <div className="flex flex-col h-screen">
       {/* Header */}
       <header className="flex items-center px-4 py-2 border-b border-gray-200 bg-white shrink-0">
-        <h1 className="text-lg font-bold text-gray-800">Mirror LP</h1>
+        <h1 className="text-lg font-bold text-gray-800">Mirror</h1>
         <span className="ml-2 text-xs text-gray-400">
-          Leadership Principles self-assessment
+          Universal self-reflection engine
         </span>
       </header>
 

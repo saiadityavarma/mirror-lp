@@ -8,8 +8,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Mirror LP",
-  description: "Self-assessment against Amazon's 16 Leadership Principles",
+  title: "Mirror",
+  description: "A universal self-reflection engine. Surface contradictions across any framework — Stoic virtues, ethics, leadership, or your own.",
 };
 
 export default function RootLayout({
